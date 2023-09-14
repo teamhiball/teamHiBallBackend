@@ -38,9 +38,7 @@ jobs:
 
     - name: Get the latest image tag from ECR
       run: |
-        images=$(aws ecr describe-images --repository-name my-test-dev --query 'imageDetails[].[imagePushedAt,imageDigest]' --output json | jq -r '.imageDetails[] | .imageDigest' | sort -r)
-        latest_image_digest=$(echo "$images" | head -n 1)
-        latest_image_tag=$(aws ecr list-images --repository-name my-test-dev --query "imageIds[?imageDigest=='$latest_image_digest'].imageTag" --output text)
+        latest_image_tag=$(aws ecr describe-images --repository-name my-test-dev --query 'images | sort_by(@, &imagePushedAt) | [-1].imageTags[0]' --output text)
         latest_image_tag=$((latest_image_tag + 1))
     
     - name: Build, tag, and push image to Amazon ECR
