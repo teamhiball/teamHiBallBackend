@@ -49,7 +49,9 @@ jobs:
     - name: Update ECS Task Definition
       run: |
         task_definition_json=$(aws ecs describe-task-definition --task-definition my-spring-app-task-def --query 'taskDefinition' --output json)
-        new_task_definition_json=$(echo "$task_definition_json" | jq --arg repo "$ECR_REPOSITORY" --arg latest_tag "$IMAGE_TAG" 'del(.taskRoleArn) | .containerDefinitions[0].image = "\($repo):\($latest_tag)"')
+        new_task_definition_json=$(echo "$task_definition_json" |
+          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' |
+          jq --arg repo "$ECR_REPOSITORY" --arg latest_tag "$IMAGE_TAG" '.containerDefinitions[0].image = "\($repo):\($latest_tag)"')
 
         updated_task_definition_json=$(echo "$new_task_definition_json" | jq --arg repo "$ECR_REPOSITORY" --arg latest_tag "$IMAGE_TAG" '.containerDefinitions[0].image = "\($repo):\($latest_tag)"')
         aws ecs register-task-definition --cli-input-json "$updated_task_definition_json"
