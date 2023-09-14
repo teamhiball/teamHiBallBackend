@@ -51,7 +51,7 @@ jobs:
         task_definition_json=$(aws ecs describe-task-definition --task-definition my-spring-app-task-def --query 'taskDefinition' --output json)
         new_task_definition_json=$(echo "$task_definition_json" | jq --arg latest_tag "$IMAGE_TAG" '{ family: .family, taskRoleArn: .taskRoleArn, executionRoleArn: .executionRoleArn, networkMode: .networkMode, containerDefinitions: .containerDefinitions, volumes: .volumes, placementConstraints: .placementConstraints, requiresCompatibilities: .requiresCompatibilities, cpu: .cpu, memory: .memory }')
 
-        updated_task_definition_json=$(echo "$new_task_definition_json" | jq --arg latest_tag "$IMAGE_TAG" '.containerDefinitions[0].image = "\($ECR_REPOSITORY):\($latest_tag)"')
+        updated_task_definition_json=$(echo "$new_task_definition_json" | jq --arg repo "$ECR_REPOSITORY" --arg latest_tag "$IMAGE_TAG" '.containerDefinitions[0].image = "\($repo):\($latest_tag)"')
         aws ecs register-task-definition --cli-input-json "$updated_task_definition_json"
         
     - name: Deploy to ECS Service
