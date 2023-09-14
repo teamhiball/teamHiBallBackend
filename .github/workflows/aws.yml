@@ -20,7 +20,6 @@ jobs:
     
     - name: Build with Maven
       run: |
-        cd demo
         ./gradlew clean build
         
     - name: Configure AWS credentials
@@ -47,7 +46,7 @@ jobs:
     - name: Update ECS Task Definition
       run: |
         task_definition_json=$(aws ecs describe-task-definition --task-definition my-spring-app-task-def --query 'taskDefinition' --output json)
-        new_task_definition_json=$(echo "$task_definition_json" | jq --arg latest_tag "${{ steps.increment-tag.outputs.incremented_tag }}" '.containerDefinitions[0].image = "$ECR_REPOSITORY/my-app:" + 1')
+        new_task_definition_json=$(echo "$task_definition_json" | jq --arg latest_tag "${{ steps.increment-tag.outputs.incremented_tag }}" '.containerDefinitions[0].image = "$ECR_REPOSITORY:" + 1')
         aws ecs register-task-definition --cli-input-json "$new_task_definition_json"
         
     - name: Deploy to ECS Service
