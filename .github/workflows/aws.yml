@@ -33,14 +33,7 @@ jobs:
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1.7.0
-      
-    - name: Get the latest image tag from ECR
-      run: |
-        images=$(aws ecr describe-images --repository-name my-test-dev --query 'imageDetails[].[imagePushedAt,imageDigest]' --output json | jq -r '.[] | select(.imagePushedAt) | select(.imageDigest) | .imageDigest' | sort -r)
-        latest_image_digest=$(echo "$images" | head -n 1)
-        latest_image_tag=$(aws ecr list-images --repository-name my-test-dev --query "imageIds[?imageDigest=='$latest_image_digest'].imageTag" --output text)
-        latest_image_tag=$((latest_image_tag + 1))
-    
+
     - name: Build, tag, and push image to Amazon ECR
       id: build-image
       env:
@@ -48,13 +41,19 @@ jobs:
         ECR_REPOSITORY: my-test-dev 
         IMAGE_TAG: $latest_image_tag
       run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:1 . #$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:1 #$IMAGE_TAG
 
-    - name: Deploy to Amazon ECS
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-      with:
-        task-definition: aws/task-definition.json
-        service: spring-kotlin-webapp-service
-        cluster: ecs-luster-dev
-        force-new-deployment: true
+    - name: Update ECS Task Definition
+      run: |
+        task_definition_json=$(aws ecs describe-task-definition --task-definition my-spring-app-task-def --query 'taskDefinition' --output json)
+        new_task_definition_json=$(echo "$task_definition_json" | jq --arg latest_tag "${{ steps.increment-tag.outputs.incremented_tag }}" '.containerDefinitions[0].image = "$ECR_REPOSITORY/my-app:" + $latest_tag')
+        aws ecs register-task-definition --cli-input-json "$new_task_definition_json"
+        
+    - name: Deploy to ECS Service
+      run: |
+        aws ecs update-service \
+        --cluster ecs-luster-dev \
+        --service spring-kotlin-webapp-service \
+        --task-definition my-spring-app-task-def 
+
